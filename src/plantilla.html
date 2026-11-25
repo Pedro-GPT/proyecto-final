@@ -1,0 +1,32 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>Las dos puertas</title><link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#05070d;color:#fff;font-family:"Segoe UI",system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}[hidden]{display:none!important}
+#pregunta{position:fixed;top:18px;left:50%;transform:translateX(-50%);width:min(820px,94vw);padding:14px 24px;background:#0a1020e0;border:2px solid var(--c,#5cc8ff);border-radius:14px;text-align:center;font-size:clamp(14px,2vw,21px);line-height:1.35;font-weight:600}
+#pregunta small{display:block;color:var(--c,#5cc8ff);letter-spacing:.14em;font-size:.65em;margin-bottom:4px}
+#respuesta{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);width:min(640px,92vw);padding:14px 22px;background:#f5efe0;color:#221a10;border-radius:10px;font-size:clamp(14px,1.8vw,19px);line-height:1.35;box-shadow:0 8px 30px #000a;text-align:center}
+#respuesta b{display:block;font-size:.72em;letter-spacing:.12em;color:#80602c;margin-bottom:4px}
+#aviso{position:fixed;bottom:38px;left:50%;transform:translateX(-50%);background:#000a;padding:8px 18px;border-radius:20px;white-space:nowrap}
+kbd{background:#fff;color:#111;border-radius:5px;padding:1px 8px;font-weight:700;font-family:inherit}
+.franja{position:fixed;left:0;right:0;height:0;background:#000;transition:height .5s}.franja.a{top:0}.franja.b{bottom:0}.cine .franja{height:11vh}
+#velo{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .5s}
+#letrero{position:fixed;inset:0;display:grid;place-items:center;font-size:clamp(28px,6vw,64px);font-weight:800;pointer-events:none;text-align:center}
+.pantalla{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;background:#05070dd0;text-align:center;padding:20px;overflow:auto}
+.pantalla h1{font-size:clamp(34px,7vw,76px);margin:0}.pantalla p{max-width:720px;margin:0;line-height:1.5}
+button{font:inherit;font-weight:700;font-size:20px;padding:12px 36px;border:0;border-radius:30px;background:#5cc8ff;color:#05202f;cursor:pointer}
+#final p.r{font-size:14px;background:#ffffff14;padding:10px 16px;border-radius:10px}
+#nombre{font:inherit;font-size:22px;font-weight:600;text-align:center;padding:10px 18px;width:min(340px,80vw);border-radius:12px;border:2px solid #5cc8ff;background:#0a1020;color:#fff;user-select:text;-webkit-user-select:text}
+#etiqueta{position:fixed;bottom:4px;left:0;transform:translateX(-50%);font-weight:700;font-size:17px;padding:1px 12px;border-radius:12px;background:#000a;color:var(--c,#5cc8ff);white-space:nowrap}
+#crono{position:fixed;left:18px;bottom:14px;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}.tactil #crono{bottom:150px}
+.podio{display:flex;align-items:flex-end;justify-content:center;gap:10px;width:min(640px,94vw)}.podio>div{flex:1;min-width:0}.podio .med{font-size:46px;line-height:1.1}.podio .nom{font-weight:700;font-size:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.podio .tie{opacity:.85;font-variant-numeric:tabular-nums}
+.podio .esc{margin-top:6px;border-radius:10px 10px 0 0;color:#1d1405;font-size:40px;font-weight:800;display:grid;place-items:center}.yo .nom{text-decoration:underline}
+#final h1{font-size:clamp(28px,4.5vw,50px)}#final button.sec{background:none;color:#aab;font-size:14px;padding:4px 12px;font-weight:400;text-decoration:underline}
+#tactil{display:none}.tactil #tactil{display:block}#tactil div{position:fixed;bottom:22px;width:62px;height:62px;border-radius:50%;background:#ffffff38;display:grid;place-items:center;font-size:22px;font-weight:700}
+.tactil #respuesta{bottom:200px}.tactil #aviso{bottom:150px}.cine #tactil{display:none}
+</style></head><body><canvas id="c"></canvas>
+<div id="pregunta" hidden><small></small><span></span></div><div id="respuesta" hidden><b></b><span></span></div><div id="aviso" hidden></div><div id="etiqueta" hidden></div><div id="crono" hidden></div>
+<div id="tactil"><div data-k="KeyA" style="left:16px">◀</div><div data-k="KeyW" style="left:86px;bottom:78px">▲</div><div data-k="KeyD" style="left:156px">▶</div><div data-k="KeyE" style="right:92px">E</div><div data-k="KeyF" style="right:16px">F</div></div>
+<div class="franja a"></div><div class="franja b"></div><div id="letrero"></div><div id="velo"></div>
+<div id="portada" class="pantalla"><h1>LAS DOS PUERTAS</h1><p>Una pregunta, dos puertas. Solo una lleva adelante.</p><p><kbd>W</kbd> avanzar &nbsp; <kbd>A</kbd> <kbd>D</kbd> a los lados &nbsp; <kbd>Shift</kbd> correr<br><br><kbd>E</kbd> leer la respuesta de la puerta &nbsp; <kbd>F</kbd> abrirla: no hay vuelta atrás</p><label for="nombre"><b>¿Cuál es tu nombre?</b></label><input id="nombre" maxlength="16" autocomplete="off" placeholder="Escribe tu nombre"><p><small>Es para el ranking del final: gana el más rápido.</small></p><button id="jugar" disabled>Cargando…</button></div>
+<div id="final" class="pantalla" hidden></div>
+<script src="preguntas.js"></script><script>/*JUEGO*/</script></body></html>
