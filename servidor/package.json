@@ -1,0 +1,1 @@
+{"name":"proyecto-final-ranking","private":true,"type":"module","scripts":{"test":"node --test test.mjs","deploy":"wrangler deploy"},"devDependencies":{"miniflare":"4.20260730.0","wrangler":"^4.158.0"}}

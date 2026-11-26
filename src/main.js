@@ -116,24 +116,33 @@ function ponNivel(n) {
   $('#letrero').textContent = ''; document.body.classList.remove('cine'); $('#velo').style.opacity = 0;
   per.anim.ponTorso(null); per.anim.pon('quieto', .01); estado = 'juego'; camara(1, true);
 }
-// ---- Nombre, tiempo y ranking (se guarda en este navegador) ----
-const CLAVE = 'puertas_ranking'; let nombre = '', inicio = 0, tiempo = 0;
+// ---- Nombre, tiempo y ranking ----
+// Ranking compartido por todos los jugadores (servidor en servidor/). Sin conexión, se usa el de este dispositivo.
+const SERVIDOR = 'https://proyecto-final-ranking.crazy-arcade-visitas.workers.dev', CLAVE = 'puertas_ranking'; let nombre = '', inicio = 0, tiempo = 0;
 const texto = ms => { const d = Math.floor(ms / 100); return Math.floor(d / 600) + ':' + String(Math.floor(d / 10) % 60).padStart(2, '0') + ',' + d % 10; };
-const lee = () => { try { const r = JSON.parse(localStorage.getItem(CLAVE)); return Array.isArray(r) ? r : []; } catch { return []; } };
-const guarda = r => { try { localStorage.setItem(CLAVE, JSON.stringify(r)); } catch { } };
-// Un mismo nombre solo aparece una vez, con su mejor tiempo
-function apunta(n, ms) {
-  const r = lee(), id = n.toLocaleLowerCase(), ya = r.find(x => x.n.toLocaleLowerCase() === id);
-  if (!ya) r.push({ n, ms }); else if (ms < ya.ms) { ya.n = n; ya.ms = ms; }
-  r.sort((a, b) => a.ms - b.ms); guarda(r); return r;
+const mismo = (a, b) => a.toLowerCase() === b.toLowerCase();
+function local(n, ms) { // un mismo nombre solo aparece una vez, con su mejor tiempo
+  let r = []; try { r = JSON.parse(localStorage.getItem(CLAVE)) || []; } catch { }
+  r = r.map(x => ({ nombre: x.nombre ?? x.n, ms: x.ms })); const ya = r.find(x => mismo(x.nombre, n));
+  if (!ya) r.push({ nombre: n, ms }); else if (ms < ya.ms) Object.assign(ya, { nombre: n, ms });
+  r.sort((a, b) => a.ms - b.ms); try { localStorage.setItem(CLAVE, JSON.stringify(r)); } catch { }
+  return { ranking: r, total: r.length, yo: { puesto: r.findIndex(x => mismo(x.nombre, n)) + 1 }, local: true };
+}
+async function apunta(n, ms) {
+  try {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
+    const r = await fetch(SERVIDOR + '/tiempo', { method: 'POST', body: JSON.stringify({ n, ms: Math.round(ms) }), signal: c.signal }); clearTimeout(t);
+    if (r.ok) return await r.json();
+  } catch { }
+  return local(n, ms);
 }
 const nodo = (clase, txt = '', et = 'div') => { const e = document.createElement(et); e.className = clase; e.textContent = txt; return e; };
 function podio(r) {
   const p = nodo('podio');
   for (const i of [1, 0, 2]) {
-    const x = r[i], c = nodo(x && x.n.toLocaleLowerCase() === nombre.toLocaleLowerCase() ? 'yo' : ''), e = nodo('esc', i + 1);
+    const x = r[i], c = nodo(x && mismo(x.nombre, nombre) ? 'yo' : ''), e = nodo('esc', i + 1);
     e.style.height = [110, 76, 50][i] + 'px'; e.style.background = ['#f5c542', '#c9d1da', '#cd8a52'][i];
-    c.append(nodo('med', x ? ['🥇', '🥈', '🥉'][i] : ''), nodo('nom', x ? x.n : '—'), nodo('tie', x ? texto(x.ms) : ''), e); p.append(c);
+    c.append(nodo('med', x ? ['🥇', '🥈', '🥉'][i] : ''), nodo('nom', x ? x.nombre : '—'), nodo('tie', x ? texto(x.ms) : ''), e); p.append(c);
   }
   return p;
 }
@@ -199,16 +208,17 @@ function camara(dt, ya) {
   else if (plano === 'arriba') { cam.up.set(0, 0, -1); cam.position.set(elegida.x, 3.1, -3.2); cam.lookAt(elegida.x, -50, -3.25); }
   else { const k = ya ? 1 : 1 - Math.exp(-dt * 6); mira.lerp(meta.set(J.x * .6, 1.5, J.z - 4), k); cam.position.lerp(meta.set(J.x * .6, 2.5, J.z + 4), k); cam.lookAt(mira); }
 }
-function final() {
+async function final() {
   estado = 'final'; document.body.classList.remove('cine'); $('#velo').style.opacity = 0;
-  const f = $('#final'); f.hidden = false; f.innerHTML = '<h1></h1><p></p>';
-  const r = apunta(nombre, tiempo), puesto = r.findIndex(x => x.n.toLocaleLowerCase() === nombre.toLocaleLowerCase()) + 1;
+  const f = $('#final'); f.hidden = false; f.innerHTML = '<h1></h1><p></p><p>Cargando el ranking…</p>';
   f.children[0].textContent = `¡Lo has conseguido, ${nombre}!`;
-  f.children[1].textContent = `Tu tiempo: ${texto(tiempo)} · ${caidas ? `${caidas} ${caidas > 1 ? 'caídas' : 'caída'}` : 'sin caídas'} · Puesto ${puesto} de ${r.length}`;
-  f.append(podio(r));
-  for (const d of P) { const p = document.createElement('p'); p.className = 'r'; p.textContent = d.buena; f.append(p); }
-  const b = document.createElement('button'); b.textContent = 'Jugar otra vez'; b.onclick = () => { f.hidden = true; $('#pregunta').hidden = true; $('#portada').hidden = false; $('#nombre').value = ''; $('#nombre').focus(); estado = 'menu'; plano = ''; }; f.append(b);
-  const z = nodo('sec', 'Borrar ranking', 'button'); z.onclick = () => { if (confirm('¿Borrar todos los tiempos?')) { guarda([]); f.querySelector('.podio').replaceWith(podio([])); z.remove(); } }; f.append(z);
+  const sub = `Tu tiempo: ${texto(tiempo)} · ${caidas ? `${caidas} ${caidas > 1 ? 'caídas' : 'caída'}` : 'sin caídas'}`; f.children[1].textContent = sub;
+  const r = await apunta(nombre, tiempo); if (estado !== 'final') return;
+  f.children[1].textContent = sub + (r.yo ? ` · Puesto ${r.yo.puesto} de ${r.total}` : '');
+  f.children[2].replaceWith(podio(r.ranking));
+  if (r.local) f.append(nodo('r', 'Sin conexión: este ranking es solo de este dispositivo.', 'p'));
+  for (const d of P) f.append(nodo('r', d.buena, 'p'));
+  const b = nodo('', 'Jugar otra vez', 'button'); b.onclick = () => { f.hidden = true; $('#pregunta').hidden = true; $('#portada').hidden = false; $('#nombre').value = ''; $('#nombre').focus(); estado = 'menu'; plano = ''; }; f.append(b);
 }
 addEventListener('keydown', e => { if (e.target.id === 'nombre') { if (e.key === 'Enter' && !$('#jugar').disabled) empieza(); return; } if (/^Arrow|Space/.test(e.code)) e.preventDefault(); if (e.repeat) return; tecla.add(e.code); acciona(e.code); });
 addEventListener('keyup', e => tecla.delete(e.code)); addEventListener('blur', () => tecla.clear());
@@ -236,4 +246,4 @@ new GLTFLoader().parse(GLB.buffer.slice(GLB.byteOffset, GLB.byteOffset + GLB.byt
   b.onclick = () => { b.blur(); empieza(); }; $('#nombre').focus();
   let ult = performance.now(); const bucle = n => { const d = (n - ult) / 1000; ult = n; if (!window.__T.pausa) tic(lim(d, 0, .05)); requestAnimationFrame(bucle); }; requestAnimationFrame(bucle);
 }, e => { $('#jugar').textContent = 'Error al cargar el personaje'; console.error(e); });
-window.__T = { J, puertas, tecla, acciona, tic, pausa: false, get estado() { return estado; }, get nivel() { return nivel; }, get plano() { return plano; } };
+window.__T = { local, J, puertas, tecla, acciona, tic, pausa: false, get estado() { return estado; }, get nivel() { return nivel; }, get plano() { return plano; } };

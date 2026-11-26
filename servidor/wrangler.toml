@@ -1,0 +1,11 @@
+name = "proyecto-final-ranking"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://pedro-gpt.github.io,http://localhost:8140"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "proyecto-final-ranking"
+database_id = "19142d0e-5470-4571-a7a8-436ccc48a350"
